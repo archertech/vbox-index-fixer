@@ -1,0 +1,104 @@
+#!/usr/bin/env python
+"""
+[jaredm@Serenity: machine-index]$ VBoxManage list vms
+"MS-DOS" {03790e0b-a022-44c1-9bc9-6db0addf0f10}
+"Win7" {2760d195-288f-40bd-bfc2-0eeff833377c}
+"fkdev_testmaster_1471813882758_65725" {cc677375-af7d-4b46-9a03-e137061c5d12}
+"archer_testmaster_1480109416529_58845" {effbec90-d47e-4c6c-95e4-4eb5de34a557}
+"archer_gateway_1480126697743_11927" {8a8fd4c9-6b29-499b-a825-bfc321531cff}
+"fkdev_gateway_1486575656247_8433" {de02cbc7-cdf0-4b0d-9490-4a089e64464f}
+"fk2015_gateway_1486589520962_35232" {1c614076-13da-4985-8362-d6769dd0fb39}
+"fkdev_spaces_1495054151160_41237" {b624aa98-5bcf-456e-a0f2-b2dcf4999dc6}
+"fkdev_elysium_1496248173634_46954" {c0413233-bf4b-4062-ab0b-a853488f6558}
+"fkdev_irc_1496939783056_8942" {b212861e-c085-4f6e-b861-7658ee9694e9}
+"fkdev_static_1497292589277_88367" {17fd261c-a2a2-4109-882d-3b6f10c09cd1}
+"fkdev_paperless_1498660800739_81605" {42e54d51-f6c3-4033-8c9f-53ba1a448624}
+"fkdev_natgeo_1499347935080_2660" {2b386ae4-4b61-4a1b-99ff-9df65bdf62d3}
+[jaredm@Serenity: machine-index]$ pwd
+/Users/jaredm/.vagrant.d/data/machine-index
+[jaredm@Serenity: machine-index]$ cat index|python -m json.tool
+{
+    "machines": {
+        "b7fcd97be8c849779ca64066b7867c57": {
+            "extra_data": {
+                "box": {
+                    "name": "fk-debian-jessie-20150217131542",
+                    "provider": "virtualbox",
+                    "version": "0"
+                }
+            },
+            "local_data_path": "/Users/jaredm/vms/fkdev/.vagrant",
+            "name": "natgeo",
+            "provider": "virtualbox",
+            "state": "poweroff",
+            "updated_at": null,
+            "vagrantfile_name": null,
+            "vagrantfile_path": "/Users/jaredm/vms/fkdev"
+        }
+    },
+    "version": 1
+}
+"""
+
+import hashlib
+import json
+import os
+import sys
+
+from vbox import VirtualBox
+
+index_path = os.path.join(os.environ.get('HOME'), '.vagrant.d','data','machine-index')
+base_image = 'fk-debian-jessie-20150217131542'
+
+vms = {}
+vbox = VirtualBox()
+
+for vm in vbox.machines().keys():
+    pieces = vm.split('_')
+    meta = vbox.meta(vm)
+    try:
+        if meta.shared_folders[0]['guest_path'] != 'vagrant':
+            continue
+        vagrantfile_path = meta.shared_folders[0]['host_path']
+        data = {
+            'local_data_path': os.path.join(vagrantfile_path, '.vagrant'),
+            'name': pieces[1],
+            'provider': 'virtualbox',
+            'state': meta.state,
+            'updated_at': None,
+            'vagrantfile_name': None,
+            'vagrantfile_path': vagrantfile_path,
+            'extra_data': {
+                'box': {
+                    'name': base_image,
+                    'provider': 'virtualbox',
+                    'version': '0'
+                }
+            }
+        }
+        vms.update({vm: data})
+    except KeyError:
+        # Means that there is no shared folder, so, it's probably not a vagrant box
+        pass
+
+index = {
+    'machines': {},
+    'version': 1
+}
+for vm in vms.keys():
+    try:
+        # Hash is built as: #{@env.root_path}#{vf}#{@env.local_data_path}#{@name}
+        md5hash = hashlib.md5()
+        md5hash.update('{}{}{}'.format(
+            vms[vm]['vagrantfile_path'],
+            #os.path.join(vms[vm]['vagrantfile_path'], 'Vagrantfile'),
+            vms[vm]['local_data_path'],
+            vms[vm]['name']))
+        print('{}: {}'.format(vm, md5hash.hexdigest()))
+        index['machines'].update({md5hash.hexdigest(): vms[vm]})
+    except KeyError:
+        pass
+
+with open(os.path.join(index_path, 'index'), 'w') as index_file:
+    index_file.write(json.dumps(index))
+
