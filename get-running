@@ -1,0 +1,16 @@
+#!/usr/bin/env python
+
+from vbox import VirtualBox
+
+machines = VirtualBox().running()
+
+if machines:
+    for vm in machines.keys():
+        pieces = vm.split('_')
+        try:
+            print('{} is running'.format(pieces[1]))
+        except IndexError:
+            print('{} is running'.format(vm))
+
+else:
+    print('Nothing is running')

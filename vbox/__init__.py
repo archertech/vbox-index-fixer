@@ -23,12 +23,33 @@ class VirtualBox(object):
     true_value = 'on'
     false_value = 'off'
 
-    def machines(self):
+    def suspended(self, with_meta=True):
+        return self._vm_list(with_meta=with_meta, state='suspend')
+
+    def poweredoff(self, with_meta=True):
+        return self._vm_list(with_meta=with_meta, state='poweroff')
+
+    def running(self, with_meta=True):
+        return self._vm_list(with_meta=with_meta, state='running')
+
+    def machines(self, with_meta=True):
+        return self._vm_list(with_meta=with_meta)
+
+    def _vm_list(self, with_meta=False, state=None):
         vms = {}
         for vm in iter(self._vbox_cmd(['list', 'vms']).readline, ''):
             m = re.match(r'^"(.*)" {(.*)}$', vm)
             if m:
-                vms.update({m.group(1): m.group(2)})
+                if with_meta or state:
+                    meta = self.meta(m.group(1))
+                    if state and meta.state != state:
+                        continue
+                    if with_meta:
+                        vms.update({m.group(1): meta})
+                    else:
+                        vms.update({m.group(1): m.group(2)})
+                else:
+                    vms.update({m.group(1): m.group(2)})
             else:
                 raise VBoxMachineListException('VBoxManage output didn\'t match: {}'.format(vm))
 

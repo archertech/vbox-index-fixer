@@ -53,18 +53,19 @@ base_image = 'fk-debian-jessie-20150217131542'
 vms = {}
 vbox = VirtualBox()
 
-for vm in vbox.machines().keys():
+machines = vbox.machines(with_meta=True)
+
+for vm in machines.keys():
     pieces = vm.split('_')
-    meta = vbox.meta(vm)
     try:
-        if meta.shared_folders[0]['guest_path'] != 'vagrant':
+        if machines[vm].shared_folders[0]['guest_path'] != 'vagrant':
             continue
-        vagrantfile_path = meta.shared_folders[0]['host_path']
+        vagrantfile_path = machines[vm].shared_folders[0]['host_path']
         data = {
             'local_data_path': os.path.join(vagrantfile_path, '.vagrant'),
             'name': pieces[1],
             'provider': 'virtualbox',
-            'state': meta.state,
+            'state': machines[vm].state,
             'updated_at': None,
             'vagrantfile_name': None,
             'vagrantfile_path': vagrantfile_path,
