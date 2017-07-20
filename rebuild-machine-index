@@ -43,12 +43,15 @@
 import hashlib
 import json
 import os
+import shutil
 import sys
 
 from vbox import VirtualBox
 
 index_path = os.path.join(os.environ.get('HOME'), '.vagrant.d','data','machine-index')
 base_image = 'fk-debian-jessie-20150217131542'
+
+shutil.copy(os.path.join(index_path, 'index'), os.path.join(index_path, 'index.bak'))
 
 vms = {}
 vbox = VirtualBox()
@@ -87,12 +90,24 @@ index = {
     'version': 1
 }
 for vm in vms.keys():
+    # Hash is built as: #{@env.root_path}#{vf}#{@env.local_data_path}#{@name}
+
+    # This is where vagrant stores the prebuilt hash for the VM, if it exists,
+    # use it to avoid potential problems
+    vm_uuid_file = os.path.join(vms[vm]['local_data_path'], 'machines', vms[vm]['name'], 'virtualbox', 'index_uuid')
+    if os.path.isfile(vm_uuid_file):
+        with open(vm_uuid_file, 'r') as uuid_file:
+            index_uuid = uuid_file.read()
+            print('{}: {}'.format(vm, index_uuid))
+            index['machines'].update({index_uuid: vms[vm]})
+            continue
+
+    # Original hash file wasn't found, build one.
     try:
-        # Hash is built as: #{@env.root_path}#{vf}#{@env.local_data_path}#{@name}
         md5hash = hashlib.md5()
-        md5hash.update('{}{}{}'.format(
+        md5hash.update('{}{}{}{}'.format(
             vms[vm]['vagrantfile_path'],
-            #os.path.join(vms[vm]['vagrantfile_path'], 'Vagrantfile'),
+            os.path.join(vms[vm]['vagrantfile_path'], 'Vagrantfile'),
             vms[vm]['local_data_path'],
             vms[vm]['name']))
         print('{}: {}'.format(vm, md5hash.hexdigest()))
