@@ -15,6 +15,9 @@ class VBoxMachineListException(VBoxCommandException):
 class VBoxMetadataException(VBoxCommandException):
     pass
 
+class VBoxParameterException(VBoxCommandException):
+    pass
+
 
 class VirtualBox(object):
 
@@ -22,6 +25,19 @@ class VirtualBox(object):
     none_value = 'none'
     true_value = 'on'
     false_value = 'off'
+
+    def destroy(self, vm_uuid):
+        if not vm_uuid:
+            raise VBoxParameterException('You must specify a VM\'s UUID to destroy it')
+
+        self.shutdown(vm_uuid)
+        self._vbox_cmd(['unregistervm', '--delete', vm_uuid])
+
+    def shutdown(self, vm_uuid):
+        if not vm_uuid:
+            raise VBoxParameterException('You must specify a VM\'s UUID to shut it down')
+
+        self._vbox_cmd(['controlvm', vm_uuid, 'poweroff'])
 
     def suspended(self, with_meta=True):
         return self._vm_list(with_meta=with_meta, state='suspend')
