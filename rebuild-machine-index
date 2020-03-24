@@ -90,17 +90,24 @@ index = {
     'version': 1
 }
 for vm in vms.keys():
+    meta_path = os.path.join(vms[vm]['local_data_path'], 'machines', vms[vm]['name'], 'virtualbox')
+
     # Hash is built as: #{@env.root_path}#{vf}#{@env.local_data_path}#{@name}
 
     # This is where vagrant stores the prebuilt hash for the VM, if it exists,
     # use it to avoid potential problems
-    vm_uuid_file = os.path.join(vms[vm]['local_data_path'], 'machines', vms[vm]['name'], 'virtualbox', 'index_uuid')
+    vm_uuid_file = os.path.join(meta_path, 'index_uuid')
     if os.path.isfile(vm_uuid_file):
         with open(vm_uuid_file, 'r') as uuid_file:
             index_uuid = uuid_file.read()
             print('{}: {}'.format(vm, index_uuid))
             index['machines'].update({index_uuid: vms[vm]})
             continue
+
+    box_meta_file = os.path.join(meta_path, 'box_meta')
+    if os.path.isfile(box_meta_file):
+        with open(box_meta_file, 'r') as box_meta:
+            vms[vm]['extra_data'] = json.load(box_meta)
 
     # Original hash file wasn't found, build one.
     try:
