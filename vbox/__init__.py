@@ -53,7 +53,7 @@ class VirtualBox(object):
 
     def _vm_list(self, with_meta=False, state=None):
         vms = {}
-        for vm in iter(self._vbox_cmd(['list', 'vms']).readline, ''):
+        for vm in self._vbox_cmd(['list', 'vms']):
             m = re.match(r'^"(.*)" {(.*)}$', vm)
             if m:
                 if with_meta or state:
@@ -79,13 +79,16 @@ class VirtualBox(object):
                 real_command.append(piece)
         else:
             real_command.append(command)
-        process = subprocess.Popen(real_command, stdout=subprocess.PIPE)
-        return process.stdout
+        with subprocess.Popen(real_command, stdout=subprocess.PIPE) as cmdpipe:
+            for line in cmdpipe.stdout.read().decode('utf-8').split('\n'):
+                if not line:
+                    continue
+                yield line
 
 
     def meta(self, machine_id_or_name):
         meta = {}
-        for var in iter(self._vbox_cmd(['showvminfo', '{}'.format(machine_id_or_name), '--machinereadable']).readline, ''):
+        for var in self._vbox_cmd(['showvminfo', machine_id_or_name, '--machinereadable']):
             m = re.match(r'^"?(.*)"?="?(.*?)"?$', var)
             if m:
                 key = m.group(1)
@@ -305,12 +308,12 @@ class VBoxMachineMetadata(VirtualBox):
                     }
                 })
 
-        self.vcp = {
-            'enabled': metadata['vcpenabled'],
-            'screens': metadata['vcpscreens'],
-            'file': metadata['vcpfile'],
-            'width': metadata['vcpwidth'],
-            'height': metadata['vcpheight'],
-            'rate': metadata['vcprate'],
-            'fps': metadata['vcpfps']
-        }
+        #self.vcp = {
+        #    'enabled': metadata['vcpenabled'],
+        #    'screens': metadata['vcpscreens'],
+        #    'file': metadata['vcpfile'],
+        #    'width': metadata['vcpwidth'],
+        #    'height': metadata['vcpheight'],
+        #    'rate': metadata['vcprate'],
+        #    'fps': metadata['vcpfps']
+        #}
